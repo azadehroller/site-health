@@ -81,7 +81,7 @@
   <!-- SENTRY -->
   <div class="tabpane" id="tab-sentry">
     <div class="panel">
-      <h2>Sentry — errors &amp; performance</h2>
+      <h2>Sentry — daily report</h2>
       <div class="row-actions" style="margin-top:0">
         <span class="muted" id="se-status" style="font-size:12px">Open this tab to load.</span>
         <button class="btn" id="se-reload" type="button">Reload report</button>
@@ -92,27 +92,27 @@
       <div class="cards" id="se-summary-cards"></div>
       <section class="block">
         <h2>Core Web Vitals</h2>
-        <p class="desc">p75 across all pageload transactions — last 14 days.</p>
+        <p class="desc">p75 across all pageload transactions — today (last 24 hours).</p>
         <div class="cards" id="se-cwv-cards"></div>
       </section>
       <section class="block">
         <h2>Unresolved issues</h2>
-        <p class="desc">Active errors tracked in Sentry. Click an issue ID to open it in Sentry.</p>
+        <p class="desc">Unresolved issues with activity today. Click an issue ID to open it in Sentry.</p>
         <div id="se-issues"></div>
       </section>
       <section class="block">
         <h2>Core Web Vitals by page</h2>
-        <p class="desc">Top pages by traffic with LCP, CLS, and INP (p75).</p>
+        <p class="desc">Top pages by traffic today with LCP, CLS, and INP (p75).</p>
         <div id="se-cwv-pages"></div>
       </section>
       <section class="block">
         <h2>Slowest transactions</h2>
-        <p class="desc">Pages with the highest p95 load duration — last 14 days.</p>
+        <p class="desc">Pages with the highest p95 load duration — today.</p>
         <div id="se-slow"></div>
       </section>
       <section class="block">
         <h2>Apdex &amp; failure rate</h2>
-        <p class="desc">Reliability and user satisfaction (Apdex threshold 3000 ms) for top pages.</p>
+        <p class="desc">Reliability and user satisfaction today (Apdex threshold 3000 ms).</p>
         <div id="se-apdex"></div>
       </section>
     </div>
@@ -121,7 +121,7 @@
   <!-- CHECKLY -->
   <div class="tabpane" id="tab-checkly">
     <div class="panel">
-      <h2>Checkly — uptime &amp; synthetic monitoring</h2>
+      <h2>Checkly — daily report</h2>
       <div class="row-actions" style="margin-top:0">
         <span class="muted" id="ck-status" style="font-size:12px">Open this tab to load.</span>
         <button class="btn" id="ck-reload" type="button">Reload report</button>
@@ -132,7 +132,7 @@
       <div class="cards" id="ck-summary-cards"></div>
       <section class="block">
         <h2>Check status</h2>
-        <p class="desc">Latest run status for every check. Click a check to load run history and analytics.</p>
+        <p class="desc">Latest run status for every check today. Click a check to load today’s run history and analytics.</p>
         <div id="ck-statuses"></div>
       </section>
       <section class="block">
@@ -147,7 +147,7 @@
       </section>
       <section class="block hidden" id="ck-detail-block">
         <h2>Check detail — <span id="ck-detail-name"></span></h2>
-        <p class="desc">Recent runs and 14-day analytics for the selected check.</p>
+        <p class="desc">Recent runs and today’s analytics for the selected check.</p>
         <div class="cards" id="ck-detail-metrics"></div>
         <div id="ck-detail-runs"></div>
       </section>
@@ -156,10 +156,10 @@
 
   <!-- AHREFS -->
   <div class="tabpane active" id="tab-ahrefs">
-    <div class="warn"><b>Heads up on API units:</b> Ahrefs charges units per request (min 50). This tab loads automatically once per page open (not on every tab switch), running three summary calls — Domain Rating, Site Audit projects, and the free subscription check — and fetches a project's issues only when you open it. Reload the page to refresh.</div>
+    <div class="warn"><b>Heads up on API units:</b> Ahrefs charges units per request (min 50). This tab loads automatically once per page open (not on every tab switch), running three daily summary calls — Domain Rating for today, Site Audit projects, and the free subscription check — and fetches a project's issues only when you open it. Reload the page to refresh.</div>
 
     <div class="panel">
-      <h2>Ahrefs report — roller.software</h2>
+      <h2>Ahrefs daily report — roller.software</h2>
       <div class="row-actions" style="margin-top:0">
         <span class="muted" id="ah-status" style="font-size:12px">Loading…</span>
         <span class="muted" id="ah-units" style="font-size:12px"></span>
@@ -205,6 +205,9 @@
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function today(){ return new Date().toISOString().slice(0,10); }
+  var REPORT_DATE = today();
+  var REPORT_PERIOD = "24h";
+  var REPORT_LABEL = "Daily report · " + REPORT_DATE;
 
   function api(service, path, params){
     var qs = "path="+encodeURIComponent(path);
@@ -311,7 +314,6 @@
 
   // ── Sentry ──────────────────────────────────────────────────────────────
   var seStarted = false;
-  var SE_PERIOD = "14d";
 
   function loadSentry(force){
     if(seStarted && !force) return;
@@ -322,11 +324,11 @@
 
     var base = "/api/0/organizations/{org}";
     Promise.allSettled([
-      sentry(base+"/issues/", { query:"is:unresolved", statsPeriod:SE_PERIOD, limit:100 }),
-      sentry(base+"/events/", { field:["p75(measurements.lcp)","p75(measurements.fcp)","p75(measurements.cls)","p75(measurements.inp)","p75(measurements.ttfb)"], query:"event.type:transaction", statsPeriod:SE_PERIOD }),
-      sentry(base+"/events/", { field:["transaction","p75(measurements.lcp)","p75(measurements.inp)","p75(measurements.cls)","count()"], query:"event.type:transaction has:measurements.lcp", orderby:"-count()", statsPeriod:SE_PERIOD, per_page:20 }),
-      sentry(base+"/events/", { field:["transaction","p95(transaction.duration)","count()"], query:"event.type:transaction", orderby:"-p95(transaction.duration)", statsPeriod:SE_PERIOD, per_page:15 }),
-      sentry(base+"/events/", { field:["transaction","failure_rate()","apdex(3000)","count()"], query:"event.type:transaction", orderby:"-count()", statsPeriod:SE_PERIOD, per_page:15 })
+      sentry(base+"/issues/", { query:"is:unresolved", statsPeriod:REPORT_PERIOD, limit:100 }),
+      sentry(base+"/events/", { field:["p75(measurements.lcp)","p75(measurements.fcp)","p75(measurements.cls)","p75(measurements.inp)","p75(measurements.ttfb)"], query:"event.type:transaction", statsPeriod:REPORT_PERIOD }),
+      sentry(base+"/events/", { field:["transaction","p75(measurements.lcp)","p75(measurements.inp)","p75(measurements.cls)","count()"], query:"event.type:transaction has:measurements.lcp", orderby:"-count()", statsPeriod:REPORT_PERIOD, per_page:20 }),
+      sentry(base+"/events/", { field:["transaction","p95(transaction.duration)","count()"], query:"event.type:transaction", orderby:"-p95(transaction.duration)", statsPeriod:REPORT_PERIOD, per_page:15 }),
+      sentry(base+"/events/", { field:["transaction","failure_rate()","apdex(3000)","count()"], query:"event.type:transaction", orderby:"-count()", statsPeriod:REPORT_PERIOD, per_page:15 })
     ]).then(function(r){
       if(r[0].status==="rejected"){ setErr("se-err", "Couldn't reach /api/sentry. Is the app deployed with SENTRY_AUTH_TOKEN and SENTRY_ORG set?"); $("se-status").textContent = "Failed"; return; }
 
@@ -338,7 +340,7 @@
       var events = issues.reduce(function(sum, i){ return sum + (parseInt(i.count,10)||0); }, 0);
 
       $("se-summary-cards").innerHTML =
-        '<div class="card"><div class="k">Unresolved issues</div><div class="v">'+issues.length+'</div><div class="sub">last '+esc(SE_PERIOD)+'</div></div>'+
+        '<div class="card"><div class="k">Unresolved issues</div><div class="v">'+issues.length+'</div><div class="sub">'+esc(REPORT_DATE)+'</div></div>'+
         '<div class="card"><div class="k">High priority</div><div class="v">'+highPri+'</div><div class="sub">needs attention</div></div>'+
         '<div class="card"><div class="k">Error events</div><div class="v">'+events+'</div><div class="sub">across unresolved issues</div></div>';
 
@@ -386,7 +388,7 @@
       ], apdex);
 
       $("se-results").classList.remove("hidden");
-      $("se-status").textContent = "Updated "+new Date().toLocaleTimeString()+" · "+SE_PERIOD;
+      $("se-status").textContent = "Updated "+new Date().toLocaleTimeString()+" · "+REPORT_LABEL;
     }).catch(function(){ setErr("se-err", "Unexpected error loading Sentry data."); $("se-status").textContent = "Failed"; });
   }
 
@@ -466,7 +468,7 @@
       ], alerts) : '<div class="na">No alert channels configured.</div>';
 
       $("ck-results").classList.remove("hidden");
-      $("ck-status").textContent = "Updated "+new Date().toLocaleTimeString();
+      $("ck-status").textContent = "Updated "+new Date().toLocaleTimeString()+" · "+REPORT_LABEL;
     }).catch(function(){ setErr("ck-err", "Unexpected error loading Checkly data."); $("ck-status").textContent = "Failed"; });
   }
 
@@ -477,13 +479,13 @@
     $("ck-detail-runs").innerHTML = '<div class="na">Loading run history…</div>';
     $("ck-detail-block").scrollIntoView({ behavior:"smooth", block:"start" });
 
-    var from = Math.floor(Date.now()/1000) - 86400*14;
+    var from = Math.floor(Date.now()/1000) - 86400;
     var to = Math.floor(Date.now()/1000);
     var analyticsPath = checkType==="API" ? "/v1/analytics/api-checks/"+checkId : "/v1/analytics/browser-checks/"+checkId;
     var metrics = ["availability","responseTime_p95","responseTime_median","LCP","FCP","CLS","consoleErrors"];
 
     Promise.allSettled([
-      checkly("/v2/check-results/"+checkId, { limit:20 }),
+      checkly("/v2/check-results/"+checkId, { limit:20, from:from, to:to }),
       Promise.all(metrics.map(function(metric){
         return checkly(analyticsPath, { from:from, to:to, metrics:metric }).then(function(res){ return { metric:metric, data:res.ok?res.data:null }; });
       }))
@@ -502,10 +504,10 @@
       }
 
       $("ck-detail-metrics").innerHTML =
-        '<div class="card"><div class="k">Availability</div><div class="v">'+esc(metricVal("availability")!=null?metricVal("availability")+"%":"—")+'</div><div class="sub">14 days</div></div>'+
-        '<div class="card"><div class="k">Response p95</div><div class="v">'+esc(fmtMs(metricVal("responseTime_p95")))+'</div><div class="sub">14 days</div></div>'+
-        '<div class="card"><div class="k">Response median</div><div class="v">'+esc(fmtMs(metricVal("responseTime_median")))+'</div><div class="sub">14 days</div></div>'+
-        '<div class="card"><div class="k">Console errors</div><div class="v">'+esc(metricVal("consoleErrors")!=null?metricVal("consoleErrors"):"—")+'</div><div class="sub">14 days</div></div>';
+        '<div class="card"><div class="k">Availability</div><div class="v">'+esc(metricVal("availability")!=null?metricVal("availability")+"%":"—")+'</div><div class="sub">'+esc(REPORT_DATE)+'</div></div>'+
+        '<div class="card"><div class="k">Response p95</div><div class="v">'+esc(fmtMs(metricVal("responseTime_p95")))+'</div><div class="sub">'+esc(REPORT_DATE)+'</div></div>'+
+        '<div class="card"><div class="k">Response median</div><div class="v">'+esc(fmtMs(metricVal("responseTime_median")))+'</div><div class="sub">'+esc(REPORT_DATE)+'</div></div>'+
+        '<div class="card"><div class="k">Console errors</div><div class="v">'+esc(metricVal("consoleErrors")!=null?metricVal("consoleErrors"):"—")+'</div><div class="sub">'+esc(REPORT_DATE)+'</div></div>';
 
       var entries = runsRes && runsRes.ok && runsRes.data && runsRes.data.entries ? runsRes.data.entries : [];
       $("ck-detail-runs").innerHTML = entries.length ? tableHtml([
@@ -566,7 +568,7 @@
       renderProjects(proj);
 
       $("ah-results").classList.remove("hidden");
-      var st2 = $("ah-status"); if(st2) st2.textContent = "Updated " + new Date().toLocaleTimeString();
+      var st2 = $("ah-status"); if(st2) st2.textContent = "Updated " + new Date().toLocaleTimeString() + " · " + REPORT_LABEL;
     });
   }
 
