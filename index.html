@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ROLLER Monitoring</title>
+<style>
+  :root{
+    --blue10:#011840; --white:#ffffff;
+    --blue50:#0960F6; --blue30:#033180;
+    --blue95:#EBF2FE; --blue90:#CEDFFD;
+    --font:"Proxima Nova", Arial, Helvetica, sans-serif; --radius:6px;
+  }
+  *{box-sizing:border-box} html,body{margin:0;padding:0}
+  body{font-family:var(--font);color:var(--blue10);background:var(--white);line-height:1.45;-webkit-font-smoothing:antialiased}
+  a{color:var(--blue50);text-decoration:none} a:hover{text-decoration:underline} button{font-family:var(--font);cursor:pointer}
+
+  header{background:var(--blue10);color:var(--white);padding:18px 28px}
+  header h1{font-size:20px;font-weight:700;margin:0;letter-spacing:.2px}
+  header .tag{font-size:12px;color:var(--blue90);margin-top:2px}
+
+  .tabs{display:flex;gap:2px;background:var(--blue10);padding:0 28px}
+  .tabs button{background:transparent;color:var(--blue90);border:none;border-bottom:3px solid transparent;padding:12px 20px;font-size:14px;font-weight:700}
+  .tabs button.active{color:var(--white);border-bottom-color:var(--blue50)}
+  .tabs button:hover{color:var(--white)}
+
+  main{max-width:1200px;margin:0 auto;padding:24px 28px 64px}
+  .tabpane{display:none} .tabpane.active{display:block}
+
+  .panel{border:1px solid var(--blue90);border-radius:var(--radius);padding:18px 20px;margin-bottom:22px}
+  .panel h2{font-size:13px;font-weight:700;margin:0 0 12px;text-transform:uppercase;letter-spacing:.6px}
+  .field{display:flex;flex-direction:column;gap:5px;max-width:360px}
+  .field label{font-size:12px;font-weight:700}
+  .field input{font-family:var(--font);font-size:14px;color:var(--blue10);padding:9px 11px;border:1px solid var(--blue90);border-radius:var(--radius)}
+  .field input:focus{outline:2px solid var(--blue50);border-color:var(--blue50)}
+  .row-actions{display:flex;gap:10px;align-items:center;margin-top:14px;flex-wrap:wrap}
+  .btn{background:var(--blue50);color:var(--white);border:none;padding:10px 18px;border-radius:var(--radius);font-size:14px;font-weight:700}
+  .btn:hover{background:var(--blue30)} .btn:disabled{opacity:.5;cursor:default}
+
+  .warn{font-size:12px;color:var(--blue30);background:var(--blue95);border:1px solid var(--blue90);border-radius:var(--radius);padding:10px 14px;margin-bottom:18px}
+  .notice{border-radius:var(--radius);padding:14px 16px;font-size:13px;margin-bottom:18px;border:1px solid var(--blue90);background:var(--blue95);color:var(--blue10)}
+  .hidden{display:none}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:24px}
+  .card{border:1px solid var(--blue90);border-radius:var(--radius);padding:18px 20px}
+  .card .k{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--blue30)}
+  .card .v{font-size:32px;font-weight:700;color:var(--blue50);margin-top:6px;line-height:1}
+  .card .sub{font-size:12px;color:var(--blue10);margin-top:6px}
+
+  section.block{margin-bottom:28px}
+  section.block > h2{font-size:15px;font-weight:700;margin:0 0 4px}
+  section.block > .desc{font-size:12px;color:var(--blue30);margin:0 0 12px}
+  .na{font-size:12px;color:var(--blue30);border:1px dashed var(--blue90);border-radius:var(--radius);padding:14px 16px}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:var(--blue95);color:var(--blue10);text-align:left;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:9px 11px;border-bottom:1px solid var(--blue90)}
+  tbody td{padding:9px 11px;border-bottom:1px solid var(--blue90);vertical-align:top;word-break:break-word}
+  tbody tr:hover{background:var(--blue95)}
+  .linkbtn{background:none;border:none;color:var(--blue50);font-weight:700;padding:0;font-size:13px}
+  .muted{color:var(--blue30)}
+  .placeholder{border:1px dashed var(--blue90);border-radius:var(--radius);padding:34px;text-align:center;color:var(--blue30);font-size:14px}
+</style>
+</head>
+<body>
+<header>
+  <h1>ROLLER Monitoring</h1>
+  <div class="tag">roller.software · errors · uptime · SEO</div>
+</header>
+<nav class="tabs">
+  <button data-tab="sentry">Sentry</button>
+  <button data-tab="checkly">Checkly</button>
+  <button data-tab="ahrefs" class="active">Ahrefs</button>
+</nav>
+
+<main>
+  <!-- SENTRY -->
+  <div class="tabpane" id="tab-sentry">
+    <div class="placeholder">Sentry tab — wired next. The <code>/api/sentry</code> function is already included; this pane will reuse your working Sentry dashboard reading <code>SENTRY_AUTH_TOKEN</code> server-side.</div>
+  </div>
+
+  <!-- CHECKLY -->
+  <div class="tabpane" id="tab-checkly">
+    <div class="placeholder">Checkly tab — wired next. The <code>/api/checkly</code> function is already included; this pane will reuse your working Checkly dashboard reading <code>CHECKLY_API_KEY</code> + <code>CHECKLY_ACCOUNT_ID</code> server-side.</div>
+  </div>
+
+  <!-- AHREFS -->
+  <div class="tabpane active" id="tab-ahrefs">
+    <div class="warn"><b>Heads up on API units:</b> Ahrefs charges units per request (min 50). This tab only fetches when you click the button — it does not auto-refresh. It runs three summary calls per load (Domain Rating, Site Audit projects, and the free subscription check), and fetches a project's issues only when you open it.</div>
+
+    <div class="panel">
+      <h2>Ahrefs report — roller.software</h2>
+      <div class="row-actions" style="margin-top:0">
+        <span class="muted" id="ah-status" style="font-size:12px">Loading…</span>
+        <span class="muted" id="ah-units" style="font-size:12px"></span>
+      </div>
+    </div>
+
+    <div class="notice hidden" id="ah-err"></div>
+
+    <div id="ah-results" class="hidden">
+      <div class="cards" id="ah-cards"></div>
+
+      <section class="block">
+        <h2>Site Audit projects</h2>
+        <p class="desc">Health scores per crawl project. Open one to load its full issue report (broken links, broken images, redirects, etc.).</p>
+        <div id="ah-projects"></div>
+      </section>
+
+      <section class="block hidden" id="ah-issues-block">
+        <h2>Issues — <span id="ah-issues-name"></span></h2>
+        <p class="desc">Full issue report for the selected project.</p>
+        <div id="ah-issues"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+
+  // Tabs
+  document.querySelectorAll(".tabs button").forEach(function(b){
+    b.addEventListener("click", function(){
+      document.querySelectorAll(".tabs button").forEach(function(x){ x.classList.remove("active"); });
+      document.querySelectorAll(".tabpane").forEach(function(x){ x.classList.remove("active"); });
+      b.classList.add("active");
+      $("tab-"+b.dataset.tab).classList.add("active");
+    });
+  });
+
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
+  function today(){ return new Date().toISOString().slice(0,10); }
+
+  // Call our own serverless proxy (same origin, no key in browser)
+  function ahrefs(path, params){
+    var qs = "path="+encodeURIComponent(path);
+    if(params) Object.keys(params).forEach(function(k){ if(params[k]!=null) qs += "&"+encodeURIComponent(k)+"="+encodeURIComponent(params[k]); });
+    return fetch("/api/ahrefs?"+qs).then(function(r){
+      return r.text().then(function(t){ var d; try{ d=t?JSON.parse(t):null; }catch(e){ d=t; } return { ok:r.ok, status:r.status, data:d }; });
+    });
+  }
+
+  // Render any object/array as a clean table (defensive — handles unknown fields)
+  function autoTable(payload){
+    var rows = Array.isArray(payload) ? payload
+      : (payload && Array.isArray(payload.projects)) ? payload.projects
+      : (payload && Array.isArray(payload.issues)) ? payload.issues
+      : (payload && Array.isArray(payload.pages)) ? payload.pages
+      : (payload && typeof payload==="object") ? [payload] : [];
+    if(!rows.length) return '<div class="na">No rows returned.</div>';
+    var cols = []; rows.forEach(function(r){ if(r&&typeof r==="object") Object.keys(r).forEach(function(k){ if(cols.indexOf(k)<0) cols.push(k); }); });
+    cols = cols.slice(0, 12);
+    var head = cols.map(function(c){ return '<th>'+esc(c)+'</th>'; }).join("");
+    var body = rows.map(function(r){
+      return '<tr>'+cols.map(function(c){
+        var v=r[c]; if(v&&typeof v==="object") v=JSON.stringify(v);
+        return '<td>'+esc(v)+'</td>';
+      }).join("")+'</tr>';
+    }).join("");
+    return '<table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+  }
+
+  function findNum(obj, keys){
+    if(!obj||typeof obj!=="object") return null;
+    for(var i=0;i<keys.length;i++){ if(obj[keys[i]]!=null) return obj[keys[i]]; }
+    // one level deep
+    for(var k in obj){ if(obj[k]&&typeof obj[k]==="object"){ for(var j=0;j<keys.length;j++){ if(obj[k][keys[j]]!=null) return obj[k][keys[j]]; } } }
+    return null;
+  }
+
+  function flagErr(msg){ var e=$("ah-err"); e.textContent=msg; e.classList.remove("hidden"); }
+
+  var ahStarted = false;
+  function loadAhrefs(){
+    if(ahStarted) return;            // one automatic pull per page load — protects API units
+    ahStarted = true;
+    var target = "roller.software";
+    $("ah-err").classList.add("hidden");
+    var st = $("ah-status"); if(st) st.textContent = "Loading…";
+    $("ah-results").classList.add("hidden");
+    $("ah-issues-block").classList.add("hidden");
+
+    Promise.allSettled([
+      ahrefs("/site-explorer/domain-rating", { target:target, date:today() }),
+      ahrefs("/site-audit/projects"),
+      ahrefs("/subscription-info/limits-and-usage")
+    ]).then(function(r){
+      // Gate: if domain-rating threw at the network level, surface it.
+      if(r[0].status==="rejected"){ flagErr("Couldn't reach /api/ahrefs. Is the app deployed with AHREFS_API_KEY set?"); return; }
+      var dr = r[0].value;
+      if(!dr.ok){ flagErr("Ahrefs returned HTTP "+dr.status+(dr.data&&dr.data.error?" — "+dr.data.error:"")+". Check the API key / units."); }
+
+      // Cards from domain-rating (known fields)
+      var drVal = findNum(dr.data, ["domain_rating"]);
+      var rankVal = findNum(dr.data, ["ahrefs_rank"]);
+      $("ah-cards").innerHTML =
+        '<div class="card"><div class="k">Domain Rating</div><div class="v">'+(drVal==null?"—":esc(drVal))+'</div><div class="sub">'+esc(target)+'</div></div>'+
+        '<div class="card"><div class="k">Ahrefs Rank</div><div class="v">'+(rankVal==null?"—":esc(rankVal))+'</div><div class="sub">global rank</div></div>';
+
+      // Subscription units (free endpoint) — guarded
+      var sub = (r[2].status==="fulfilled" && r[2].value.ok) ? r[2].value.data : null;
+      var used = findNum(sub, ["units_used","used","rows_used"]);
+      var limit = findNum(sub, ["units_limit","limit","units_total","rows_limit"]);
+      if(used!=null || limit!=null){
+        $("ah-units").textContent = "Units: "+(used==null?"?":used)+(limit!=null?(" / "+limit):"")+" used this period";
+      }
+
+      // Site Audit projects — dynamic table with an "open issues" action per row
+      var proj = (r[1].status==="fulfilled" && r[1].value.ok) ? r[1].value.data : null;
+      renderProjects(proj);
+
+      $("ah-results").classList.remove("hidden");
+      var st2 = $("ah-status"); if(st2) st2.textContent = "Updated " + new Date().toLocaleTimeString();
+    });
+  }
+
+  function renderProjects(payload){
+    var rows = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.projects)) ? payload.projects : [];
+    if(!rows.length){ $("ah-projects").innerHTML='<div class="na">No Site Audit projects returned. Either none are set up in Ahrefs, or the field names differ — open your browser Network tab on /api/ahrefs?path=/site-audit/projects and send me the response and I\'ll map the columns exactly.</div>'; return; }
+    var cols=[]; rows.forEach(function(r){ Object.keys(r).forEach(function(k){ if(cols.indexOf(k)<0) cols.push(k); }); });
+    cols = cols.slice(0,8);
+    var head = cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join("")+'<th></th>';
+    var body = rows.map(function(r,i){
+      var id = r.project_id || r.id || r.projectId;
+      var name = r.name || r.domain || r.url || ("Project "+(i+1));
+      var tds = cols.map(function(c){ var v=r[c]; if(v&&typeof v==="object") v=JSON.stringify(v); return '<td>'+esc(v)+'</td>'; }).join("");
+      return '<tr>'+tds+'<td>'+(id!=null?'<button class="linkbtn" data-pid="'+esc(id)+'" data-pname="'+esc(name)+'">View issues →</button>':'')+'</td></tr>';
+    }).join("");
+    $("ah-projects").innerHTML='<table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
+    $("ah-projects").querySelectorAll("button[data-pid]").forEach(function(b){
+      b.addEventListener("click", function(){ loadIssues(b.dataset.pid, b.dataset.pname); });
+    });
+  }
+
+  function loadIssues(projectId, name){
+    $("ah-issues-name").textContent = name;
+    $("ah-issues").innerHTML = '<div class="na">Loading…</div>';
+    $("ah-issues-block").classList.remove("hidden");
+    ahrefs("/site-audit/issues", { project_id: projectId }).then(function(r){
+      if(!r.ok){ $("ah-issues").innerHTML='<div class="na">HTTP '+r.status+(r.data&&r.data.error?" — "+esc(r.data.error):"")+'</div>'; return; }
+      $("ah-issues").innerHTML = autoTable(r.data);
+    }).catch(function(){ $("ah-issues").innerHTML='<div class="na">Request failed.</div>'; });
+  }
+
+  // Auto-load the Ahrefs report for roller.software as soon as the page opens.
+  loadAhrefs();
+})();
+</script>
+</body>
+</html>
