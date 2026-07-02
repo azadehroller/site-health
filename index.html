@@ -59,6 +59,11 @@
   .linkbtn{background:none;border:none;color:var(--blue50);font-weight:700;padding:0;font-size:13px}
   .muted{color:var(--blue30)}
   .placeholder{border:1px dashed var(--blue90);border-radius:var(--radius);padding:34px;text-align:center;color:var(--blue30);font-size:14px}
+  .pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.3px}
+  .pill.good{background:#dcfce7;color:#166534}.pill.ni{background:#fef9c3;color:#854d0e}.pill.poor{background:#fee2e2;color:#991b1b}.pill.neutral{background:var(--blue95);color:var(--blue30)}
+  .pill.pass{background:#dcfce7;color:#166534}.pill.fail{background:#fee2e2;color:#991b1b}.pill.warn{background:#fef9c3;color:#854d0e}.pill.off{background:var(--blue95);color:var(--blue30)}
+  .card .v.good{color:#166534}.card .v.ni{color:#854d0e}.card .v.poor{color:#991b1b}
+  td.num{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -75,12 +80,78 @@
 <main>
   <!-- SENTRY -->
   <div class="tabpane" id="tab-sentry">
-    <div class="placeholder">Sentry tab — wired next. The <code>/api/sentry</code> function is already included; this pane will reuse your working Sentry dashboard reading <code>SENTRY_AUTH_TOKEN</code> server-side.</div>
+    <div class="panel">
+      <h2>Sentry — errors &amp; performance</h2>
+      <div class="row-actions" style="margin-top:0">
+        <span class="muted" id="se-status" style="font-size:12px">Open this tab to load.</span>
+        <button class="btn" id="se-reload" type="button">Reload report</button>
+      </div>
+    </div>
+    <div class="notice hidden" id="se-err"></div>
+    <div id="se-results" class="hidden">
+      <div class="cards" id="se-summary-cards"></div>
+      <section class="block">
+        <h2>Core Web Vitals</h2>
+        <p class="desc">p75 across all pageload transactions — last 14 days.</p>
+        <div class="cards" id="se-cwv-cards"></div>
+      </section>
+      <section class="block">
+        <h2>Unresolved issues</h2>
+        <p class="desc">Active errors tracked in Sentry. Click an issue ID to open it in Sentry.</p>
+        <div id="se-issues"></div>
+      </section>
+      <section class="block">
+        <h2>Core Web Vitals by page</h2>
+        <p class="desc">Top pages by traffic with LCP, CLS, and INP (p75).</p>
+        <div id="se-cwv-pages"></div>
+      </section>
+      <section class="block">
+        <h2>Slowest transactions</h2>
+        <p class="desc">Pages with the highest p95 load duration — last 14 days.</p>
+        <div id="se-slow"></div>
+      </section>
+      <section class="block">
+        <h2>Apdex &amp; failure rate</h2>
+        <p class="desc">Reliability and user satisfaction (Apdex threshold 3000 ms) for top pages.</p>
+        <div id="se-apdex"></div>
+      </section>
+    </div>
   </div>
 
   <!-- CHECKLY -->
   <div class="tabpane" id="tab-checkly">
-    <div class="placeholder">Checkly tab — wired next. The <code>/api/checkly</code> function is already included; this pane will reuse your working Checkly dashboard reading <code>CHECKLY_API_KEY</code> + <code>CHECKLY_ACCOUNT_ID</code> server-side.</div>
+    <div class="panel">
+      <h2>Checkly — uptime &amp; synthetic monitoring</h2>
+      <div class="row-actions" style="margin-top:0">
+        <span class="muted" id="ck-status" style="font-size:12px">Open this tab to load.</span>
+        <button class="btn" id="ck-reload" type="button">Reload report</button>
+      </div>
+    </div>
+    <div class="notice hidden" id="ck-err"></div>
+    <div id="ck-results" class="hidden">
+      <div class="cards" id="ck-summary-cards"></div>
+      <section class="block">
+        <h2>Check status</h2>
+        <p class="desc">Latest run status for every check. Click a check to load run history and analytics.</p>
+        <div id="ck-statuses"></div>
+      </section>
+      <section class="block">
+        <h2>All checks</h2>
+        <p class="desc">Full check configuration — type, frequency, locations, activation.</p>
+        <div id="ck-checks"></div>
+      </section>
+      <section class="block">
+        <h2>Alert channels</h2>
+        <p class="desc">Notification destinations configured in Checkly.</p>
+        <div id="ck-alerts"></div>
+      </section>
+      <section class="block hidden" id="ck-detail-block">
+        <h2>Check detail — <span id="ck-detail-name"></span></h2>
+        <p class="desc">Recent runs and 14-day analytics for the selected check.</p>
+        <div class="cards" id="ck-detail-metrics"></div>
+        <div id="ck-detail-runs"></div>
+      </section>
+    </div>
   </div>
 
   <!-- AHREFS -->
@@ -127,19 +198,74 @@
       document.querySelectorAll(".tabpane").forEach(function(x){ x.classList.remove("active"); });
       b.classList.add("active");
       $("tab-"+b.dataset.tab).classList.add("active");
+      if(b.dataset.tab==="sentry") loadSentry();
+      if(b.dataset.tab==="checkly") loadCheckly();
     });
   });
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
   function today(){ return new Date().toISOString().slice(0,10); }
 
-  // Call our own serverless proxy (same origin, no key in browser)
-  function ahrefs(path, params){
+  function api(service, path, params){
     var qs = "path="+encodeURIComponent(path);
-    if(params) Object.keys(params).forEach(function(k){ if(params[k]!=null) qs += "&"+encodeURIComponent(k)+"="+encodeURIComponent(params[k]); });
-    return fetch("/api/ahrefs?"+qs).then(function(r){
+    if(params) Object.keys(params).forEach(function(k){
+      var v = params[k];
+      if(v==null) return;
+      if(Array.isArray(v)) v.forEach(function(item){ qs += "&"+encodeURIComponent(k)+"="+encodeURIComponent(item); });
+      else qs += "&"+encodeURIComponent(k)+"="+encodeURIComponent(v);
+    });
+    return fetch("/api/"+service+"?"+qs).then(function(r){
       return r.text().then(function(t){ var d; try{ d=t?JSON.parse(t):null; }catch(e){ d=t; } return { ok:r.ok, status:r.status, data:d }; });
     });
+  }
+  function ahrefs(path, params){ return api("ahrefs", path, params); }
+  function sentry(path, params){ return api("sentry", path, params); }
+  function checkly(path, params){ return api("checkly", path, params); }
+
+  function setErr(id, msg){ var e=$(id); if(!e) return; if(msg){ e.textContent=msg; e.classList.remove("hidden"); } else e.classList.add("hidden"); }
+  function fmtMs(v){ if(v==null||isNaN(v)) return "—"; return Math.round(v)+" ms"; }
+  function fmtPct(v){ if(v==null||isNaN(v)) return "—"; return (v*100).toFixed(1)+"%"; }
+  function fmtCls(v){ if(v==null||isNaN(v)) return "—"; return Number(v).toFixed(3); }
+  function fmtDate(v){ if(!v) return "—"; try{ return new Date(v).toLocaleString(); }catch(e){ return String(v); } }
+  function fmtApdex(v){ if(v==null||isNaN(v)) return "—"; return Number(v).toFixed(2); }
+
+  function cwvRating(metric, value){
+    if(value==null||isNaN(value)) return { label:"—", cls:"neutral" };
+    var g, n;
+    if(metric==="lcp"){ g=2500; n=4000; }
+    else if(metric==="fcp"){ g=1800; n=3000; }
+    else if(metric==="inp"){ g=200; n=500; }
+    else if(metric==="ttfb"){ g=800; n=1800; }
+    else if(metric==="cls"){ g=0.1; n=0.25; }
+    else return { label:"—", cls:"neutral" };
+    if(value<=g) return { label:"Good", cls:"good" };
+    if(value<=n) return { label:"Needs work", cls:"ni" };
+    return { label:"Poor", cls:"poor" };
+  }
+
+  function cwvCard(name, value, metric, fmt){
+    var r = cwvRating(metric, value);
+    var display = fmt ? fmt(value) : esc(value);
+    return '<div class="card"><div class="k">'+esc(name)+'</div><div class="v '+r.cls+'">'+display+'</div><div class="sub"><span class="pill '+r.cls+'">'+esc(r.label)+'</span></div></div>';
+  }
+
+  function dataRows(payload){
+    if(Array.isArray(payload)) return payload;
+    if(payload && Array.isArray(payload.data)) return payload.data;
+    return [];
+  }
+
+  function tableHtml(cols, rows){
+    if(!rows.length) return '<div class="na">No rows returned.</div>';
+    var head = cols.map(function(c){ return '<th>'+esc(c.label)+'</th>'; }).join("");
+    var body = rows.map(function(row){
+      return '<tr>'+cols.map(function(c){
+        var raw = typeof c.key==="function" ? c.key(row) : row[c.key];
+        var cell = c.render ? c.render(raw, row) : esc(raw);
+        return '<td class="'+(c.cls||"")+'">'+cell+'</td>';
+      }).join("")+'</tr>';
+    }).join("");
+    return '<table><thead><tr>'+head+'</tr></thead><tbody>'+body+'</tbody></table>';
   }
 
   // Render any object/array as a clean table (defensive — handles unknown fields)
@@ -181,7 +307,224 @@
     return null;
   }
 
-  function flagErr(msg){ var e=$("ah-err"); e.textContent=msg; e.classList.remove("hidden"); }
+  function flagErr(msg){ setErr("ah-err", msg); }
+
+  // ── Sentry ──────────────────────────────────────────────────────────────
+  var seStarted = false;
+  var SE_PERIOD = "14d";
+
+  function loadSentry(force){
+    if(seStarted && !force) return;
+    seStarted = true;
+    setErr("se-err", null);
+    $("se-status").textContent = "Loading…";
+    $("se-results").classList.add("hidden");
+
+    var base = "/api/0/organizations/{org}";
+    Promise.allSettled([
+      sentry(base+"/issues/", { query:"is:unresolved", statsPeriod:SE_PERIOD, limit:100 }),
+      sentry(base+"/events/", { field:["p75(measurements.lcp)","p75(measurements.fcp)","p75(measurements.cls)","p75(measurements.inp)","p75(measurements.ttfb)"], query:"event.type:transaction", statsPeriod:SE_PERIOD }),
+      sentry(base+"/events/", { field:["transaction","p75(measurements.lcp)","p75(measurements.inp)","p75(measurements.cls)","count()"], query:"event.type:transaction has:measurements.lcp", orderby:"-count()", statsPeriod:SE_PERIOD, per_page:20 }),
+      sentry(base+"/events/", { field:["transaction","p95(transaction.duration)","count()"], query:"event.type:transaction", orderby:"-p95(transaction.duration)", statsPeriod:SE_PERIOD, per_page:15 }),
+      sentry(base+"/events/", { field:["transaction","failure_rate()","apdex(3000)","count()"], query:"event.type:transaction", orderby:"-count()", statsPeriod:SE_PERIOD, per_page:15 })
+    ]).then(function(r){
+      if(r[0].status==="rejected"){ setErr("se-err", "Couldn't reach /api/sentry. Is the app deployed with SENTRY_AUTH_TOKEN and SENTRY_ORG set?"); $("se-status").textContent = "Failed"; return; }
+
+      var issuesRes = r[0].value;
+      if(!issuesRes.ok){ setErr("se-err", "Sentry returned HTTP "+issuesRes.status+(issuesRes.data&&issuesRes.data.error?" — "+issuesRes.data.error:"")+"."); }
+
+      var issues = Array.isArray(issuesRes.data) ? issuesRes.data : [];
+      var highPri = issues.filter(function(i){ return i.priority==="high"; }).length;
+      var events = issues.reduce(function(sum, i){ return sum + (parseInt(i.count,10)||0); }, 0);
+
+      $("se-summary-cards").innerHTML =
+        '<div class="card"><div class="k">Unresolved issues</div><div class="v">'+issues.length+'</div><div class="sub">last '+esc(SE_PERIOD)+'</div></div>'+
+        '<div class="card"><div class="k">High priority</div><div class="v">'+highPri+'</div><div class="sub">needs attention</div></div>'+
+        '<div class="card"><div class="k">Error events</div><div class="v">'+events+'</div><div class="sub">across unresolved issues</div></div>';
+
+      var cwv = (r[1].status==="fulfilled" && r[1].value.ok && r[1].value.data) ? (dataRows(r[1].value.data)[0]||{}) : {};
+      $("se-cwv-cards").innerHTML =
+        cwvCard("LCP", cwv["p75(measurements.lcp)"], "lcp", fmtMs)+
+        cwvCard("FCP", cwv["p75(measurements.fcp)"], "fcp", fmtMs)+
+        cwvCard("CLS", cwv["p75(measurements.cls)"], "cls", fmtCls)+
+        cwvCard("INP", cwv["p75(measurements.inp)"], "inp", fmtMs)+
+        cwvCard("TTFB", cwv["p75(measurements.ttfb)"], "ttfb", fmtMs);
+
+      $("se-issues").innerHTML = tableHtml([
+        { label:"Issue", key:function(row){ return row.shortId; }, render:function(v,row){ return '<a href="'+esc(row.permalink)+'" target="_blank" rel="noopener">'+esc(v)+'</a>'; } },
+        { label:"Title", key:"title" },
+        { label:"Level", key:"level", render:function(v){ return '<span class="pill fail">'+esc(v)+'</span>'; } },
+        { label:"Priority", key:"priority", render:function(v){ var c=v==="high"?"fail":v==="medium"?"warn":"neutral"; return '<span class="pill '+c+'">'+esc(v||"—")+'</span>'; } },
+        { label:"Events", key:"count", cls:"num" },
+        { label:"Users", key:"userCount", cls:"num" },
+        { label:"Last seen", key:"lastSeen", render:function(v){ return esc(fmtDate(v)); } },
+        { label:"Page / culprit", key:"culprit" }
+      ], issues);
+
+      var cwvPages = (r[2].status==="fulfilled" && r[2].value.ok) ? dataRows(r[2].value.data) : [];
+      $("se-cwv-pages").innerHTML = tableHtml([
+        { label:"Page", key:"transaction" },
+        { label:"Views", key:"count()", cls:"num" },
+        { label:"LCP p75", key:"p75(measurements.lcp)", cls:"num", render:function(v){ var rt=cwvRating("lcp",v); return '<span class="pill '+rt.cls+'">'+fmtMs(v)+'</span>'; } },
+        { label:"CLS p75", key:"p75(measurements.cls)", cls:"num", render:function(v){ var rt=cwvRating("cls",v); return '<span class="pill '+rt.cls+'">'+fmtCls(v)+'</span>'; } },
+        { label:"INP p75", key:"p75(measurements.inp)", cls:"num", render:function(v){ if(v==null) return "—"; var rt=cwvRating("inp",v); return '<span class="pill '+rt.cls+'">'+fmtMs(v)+'</span>'; } }
+      ], cwvPages);
+
+      var slow = (r[3].status==="fulfilled" && r[3].value.ok) ? dataRows(r[3].value.data) : [];
+      $("se-slow").innerHTML = tableHtml([
+        { label:"Transaction", key:"transaction" },
+        { label:"p95 duration", key:"p95(transaction.duration)", cls:"num", render:function(v){ return esc(fmtMs(v)); } },
+        { label:"Samples", key:"count()", cls:"num" }
+      ], slow);
+
+      var apdex = (r[4].status==="fulfilled" && r[4].value.ok) ? dataRows(r[4].value.data) : [];
+      $("se-apdex").innerHTML = tableHtml([
+        { label:"Transaction", key:"transaction" },
+        { label:"Apdex", key:"apdex(3000)", cls:"num", render:function(v){ return esc(fmtApdex(v)); } },
+        { label:"Failure rate", key:"failure_rate()", cls:"num", render:function(v){ return esc(fmtPct(v)); } },
+        { label:"Samples", key:"count()", cls:"num" }
+      ], apdex);
+
+      $("se-results").classList.remove("hidden");
+      $("se-status").textContent = "Updated "+new Date().toLocaleTimeString()+" · "+SE_PERIOD;
+    }).catch(function(){ setErr("se-err", "Unexpected error loading Sentry data."); $("se-status").textContent = "Failed"; });
+  }
+
+  $("se-reload").addEventListener("click", function(){ seStarted=false; loadSentry(true); });
+
+  // ── Checkly ─────────────────────────────────────────────────────────────
+  var ckStarted = false;
+
+  function checkStatusPill(row){
+    if(row.hasFailures) return '<span class="pill fail">Failed</span>';
+    if(row.hasErrors) return '<span class="pill fail">Error</span>';
+    if(row.isDegraded) return '<span class="pill warn">Degraded</span>';
+    return '<span class="pill pass">Passing</span>';
+  }
+
+  function loadCheckly(force){
+    if(ckStarted && !force) return;
+    ckStarted = true;
+    setErr("ck-err", null);
+    $("ck-status").textContent = "Loading…";
+    $("ck-results").classList.add("hidden");
+    $("ck-detail-block").classList.add("hidden");
+
+    Promise.allSettled([
+      checkly("/v1/check-statuses"),
+      checkly("/v1/checks"),
+      checkly("/v1/alert-channels")
+    ]).then(function(r){
+      if(r[0].status==="rejected"){ setErr("ck-err", "Couldn't reach /api/checkly. Are CHECKLY_API_KEY and CHECKLY_ACCOUNT_ID set?"); $("ck-status").textContent = "Failed"; return; }
+
+      var statusesRes = r[0].value;
+      if(!statusesRes.ok){ setErr("ck-err", "Checkly returned HTTP "+statusesRes.status+(statusesRes.data&&statusesRes.data.detail?" — "+statusesRes.data.detail:(statusesRes.data&&statusesRes.data.message?" — "+statusesRes.data.message:""))+"."); }
+
+      var statuses = Array.isArray(statusesRes.data) ? statusesRes.data : [];
+      var checks = (r[1].status==="fulfilled" && r[1].value.ok && Array.isArray(r[1].value.data)) ? r[1].value.data : [];
+      var alerts = (r[2].status==="fulfilled" && r[2].value.ok && Array.isArray(r[2].value.data)) ? r[2].value.data : [];
+
+      var passing = statuses.filter(function(s){ return !s.hasFailures && !s.hasErrors && !s.isDegraded; }).length;
+      var failing = statuses.filter(function(s){ return s.hasFailures || s.hasErrors; }).length;
+      var degraded = statuses.filter(function(s){ return s.isDegraded; }).length;
+
+      $("ck-summary-cards").innerHTML =
+        '<div class="card"><div class="k">Total checks</div><div class="v">'+statuses.length+'</div><div class="sub">monitored</div></div>'+
+        '<div class="card"><div class="k">Passing</div><div class="v good">'+passing+'</div><div class="sub">healthy</div></div>'+
+        '<div class="card"><div class="k">Failing / errors</div><div class="v poor">'+failing+'</div><div class="sub">needs attention</div></div>'+
+        '<div class="card"><div class="k">Degraded</div><div class="v ni">'+degraded+'</div><div class="sub">slow or flaky</div></div>';
+
+      $("ck-statuses").innerHTML = tableHtml([
+        { label:"Check", key:"name" },
+        { label:"Status", key:function(row){ return row; }, render:function(v,row){ return checkStatusPill(row); } },
+        { label:"Response", key:"longestRun", cls:"num", render:function(v,row){ return esc(fmtMs(row.longestRun)); } },
+        { label:"Last updated", key:"updated_at", render:function(v){ return esc(fmtDate(v)); } },
+        { label:"Location", key:"lastRunLocation", render:function(v){ return esc(v||"—"); } },
+        { label:"SSL days", key:"sslDaysRemaining", cls:"num", render:function(v){ return v==null?"—":esc(v); } },
+        { label:"", key:"checkId", render:function(v,row){ return '<button class="linkbtn" data-ckid="'+esc(v)+'" data-ckname="'+esc(row.name)+'" data-cktype="'+esc((checks.find(function(c){return c.id===v;})||{}).checkType||"")+'">View runs →</button>'; } }
+      ], statuses);
+
+      $("ck-statuses").querySelectorAll("button[data-ckid]").forEach(function(b){
+        b.addEventListener("click", function(){ loadCheckDetail(b.dataset.ckid, b.dataset.ckname, b.dataset.cktype); });
+      });
+
+      $("ck-checks").innerHTML = tableHtml([
+        { label:"Name", key:"name" },
+        { label:"Type", key:"checkType" },
+        { label:"Frequency", key:"frequency", cls:"num", render:function(v){ return v==null?"—":esc(v+" min"); } },
+        { label:"Active", key:"activated", render:function(v){ return '<span class="pill '+(v?"pass":"off")+'">'+(v?"Yes":"No")+'</span>'; } },
+        { label:"Muted", key:"muted", render:function(v){ return v?"Yes":"No"; } },
+        { label:"Locations", key:"locations", render:function(v){ return esc(Array.isArray(v)?v.join(", "):v); } }
+      ], checks);
+
+      $("ck-alerts").innerHTML = alerts.length ? tableHtml([
+        { label:"Type", key:"type" },
+        { label:"Target", key:"config", render:function(v){ return esc(v&&(v.address||v.url||v.channel||JSON.stringify(v))); } },
+        { label:"On failure", key:"sendFailure", render:function(v){ return v?"Yes":"No"; } },
+        { label:"On recovery", key:"sendRecovery", render:function(v){ return v?"Yes":"No"; } },
+        { label:"On degraded", key:"sendDegraded", render:function(v){ return v?"Yes":"No"; } }
+      ], alerts) : '<div class="na">No alert channels configured.</div>';
+
+      $("ck-results").classList.remove("hidden");
+      $("ck-status").textContent = "Updated "+new Date().toLocaleTimeString();
+    }).catch(function(){ setErr("ck-err", "Unexpected error loading Checkly data."); $("ck-status").textContent = "Failed"; });
+  }
+
+  function loadCheckDetail(checkId, name, checkType){
+    $("ck-detail-name").textContent = name;
+    $("ck-detail-block").classList.remove("hidden");
+    $("ck-detail-metrics").innerHTML = '<div class="na">Loading analytics…</div>';
+    $("ck-detail-runs").innerHTML = '<div class="na">Loading run history…</div>';
+    $("ck-detail-block").scrollIntoView({ behavior:"smooth", block:"start" });
+
+    var from = Math.floor(Date.now()/1000) - 86400*14;
+    var to = Math.floor(Date.now()/1000);
+    var analyticsPath = checkType==="API" ? "/v1/analytics/api-checks/"+checkId : "/v1/analytics/browser-checks/"+checkId;
+    var metrics = ["availability","responseTime_p95","responseTime_median","LCP","FCP","CLS","consoleErrors"];
+
+    Promise.allSettled([
+      checkly("/v2/check-results/"+checkId, { limit:20 }),
+      Promise.all(metrics.map(function(metric){
+        return checkly(analyticsPath, { from:from, to:to, metrics:metric }).then(function(res){ return { metric:metric, data:res.ok?res.data:null }; });
+      }))
+    ]).then(function(r){
+      var runsRes = r[0].status==="fulfilled" ? r[0].value : null;
+      var analytics = {};
+      if(r[1].status==="fulfilled") r[1].value.forEach(function(item){ analytics[item.metric] = item.data; });
+
+      function metricVal(metric){
+        var payload = analytics[metric];
+        if(!payload || !payload.series || !payload.series[0] || !payload.series[0].data || !payload.series[0].data[0]) return null;
+        var point = payload.series[0].data[0];
+        if(point[metric]!=null) return point[metric];
+        if(metric==="availability" && point.availability!=null) return point.availability;
+        return null;
+      }
+
+      $("ck-detail-metrics").innerHTML =
+        '<div class="card"><div class="k">Availability</div><div class="v">'+esc(metricVal("availability")!=null?metricVal("availability")+"%":"—")+'</div><div class="sub">14 days</div></div>'+
+        '<div class="card"><div class="k">Response p95</div><div class="v">'+esc(fmtMs(metricVal("responseTime_p95")))+'</div><div class="sub">14 days</div></div>'+
+        '<div class="card"><div class="k">Response median</div><div class="v">'+esc(fmtMs(metricVal("responseTime_median")))+'</div><div class="sub">14 days</div></div>'+
+        '<div class="card"><div class="k">Console errors</div><div class="v">'+esc(metricVal("consoleErrors")!=null?metricVal("consoleErrors"):"—")+'</div><div class="sub">14 days</div></div>';
+
+      var entries = runsRes && runsRes.ok && runsRes.data && runsRes.data.entries ? runsRes.data.entries : [];
+      $("ck-detail-runs").innerHTML = entries.length ? tableHtml([
+        { label:"Started", key:"startedAt", render:function(v){ return esc(fmtDate(v)); } },
+        { label:"Status", key:function(row){ return row; }, render:function(v,row){
+          if(row.hasFailures) return '<span class="pill fail">Failed</span>';
+          if(row.hasErrors) return '<span class="pill fail">Error</span>';
+          if(row.isDegraded) return '<span class="pill warn">Degraded</span>';
+          return '<span class="pill pass">Pass</span>';
+        }},
+        { label:"Response", key:"responseTime", cls:"num", render:function(v){ return esc(fmtMs(v)); } },
+        { label:"Location", key:"runLocation" },
+        { label:"Attempts", key:"attempts", cls:"num" },
+        { label:"Over max RT", key:"overMaxResponseTime", render:function(v){ return v?"Yes":"No"; } }
+      ], entries) : '<div class="na">No run history returned for this check.</div>';
+    });
+  }
+
+  $("ck-reload").addEventListener("click", function(){ ckStarted=false; loadCheckly(true); });
 
   var ahStarted = false;
   function loadAhrefs(){
