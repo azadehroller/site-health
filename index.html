@@ -69,7 +69,7 @@
 <body>
 <header>
   <h1>ROLLER Monitoring</h1>
-  <div class="tag">roller.software · errors · uptime · SEO</div>
+  <div class="tag" id="global-tag">roller.software · errors · uptime · SEO · AI/cron: <code>/api/daily-report</code></div>
 </header>
 <nav class="tabs">
   <button data-tab="sentry">Sentry</button>
@@ -156,13 +156,14 @@
 
   <!-- AHREFS -->
   <div class="tabpane active" id="tab-ahrefs">
-    <div class="warn"><b>Heads up on API units:</b> Ahrefs charges units per request (min 50). This tab loads automatically once per page open (not on every tab switch), running three daily summary calls — Domain Rating for today, Site Audit projects, and the free subscription check — and fetches a project's issues only when you open it. Reload the page to refresh.</div>
+    <div class="warn"><b>Human dashboard only.</b> Scheduled AI/Slack reports should call <code>/api/daily-report</code> (server-side JSON/text) — not this page. Ahrefs charges units per request (min 50). Each tab loads when you open it; use Reload to refresh.</div>
 
     <div class="panel">
       <h2>Ahrefs daily report — roller.software</h2>
       <div class="row-actions" style="margin-top:0">
-        <span class="muted" id="ah-status" style="font-size:12px">Loading…</span>
+        <span class="muted" id="ah-status" style="font-size:12px">Open this tab to load.</span>
         <span class="muted" id="ah-units" style="font-size:12px"></span>
+        <button class="btn" id="ah-reload" type="button">Reload report</button>
       </div>
     </div>
 
@@ -200,13 +201,19 @@
       $("tab-"+b.dataset.tab).classList.add("active");
       if(b.dataset.tab==="sentry") loadSentry();
       if(b.dataset.tab==="checkly") loadCheckly();
+      if(b.dataset.tab==="ahrefs") loadAhrefs();
     });
   });
 
   function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
-  function today(){ return new Date().toISOString().slice(0,10); }
-  var REPORT_DATE = today();
+  function pad(n){ return n<10?"0"+n:String(n); }
+  function localToday(d){
+    d = d || new Date();
+    return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
+  }
+
   var REPORT_PERIOD = "24h";
+  var REPORT_DATE = localToday();
   var REPORT_LABEL = "Daily report · " + REPORT_DATE;
 
   function api(service, path, params){
@@ -527,10 +534,11 @@
   }
 
   $("ck-reload").addEventListener("click", function(){ ckStarted=false; loadCheckly(true); });
+  $("ah-reload").addEventListener("click", function(){ ahStarted=false; loadAhrefs(true); });
 
   var ahStarted = false;
-  function loadAhrefs(){
-    if(ahStarted) return;            // one automatic pull per page load — protects API units
+  function loadAhrefs(force){
+    if(ahStarted && !force) return;
     ahStarted = true;
     var target = "roller.software";
     $("ah-err").classList.add("hidden");
@@ -539,7 +547,7 @@
     $("ah-issues-block").classList.add("hidden");
 
     Promise.allSettled([
-      ahrefs("/site-explorer/domain-rating", { target:target, date:today() }),
+      ahrefs("/site-explorer/domain-rating", { target:target, date:REPORT_DATE }),
       ahrefs("/site-audit/projects"),
       ahrefs("/subscription-info/limits-and-usage")
     ]).then(function(r){
@@ -603,8 +611,7 @@
     }).catch(function(){ $("ah-issues").innerHTML='<div class="na">Request failed.</div>'; });
   }
 
-  // Auto-load the Ahrefs report for roller.software as soon as the page opens.
-  loadAhrefs();
+  // Human dashboard only — tabs load when opened. Scheduled AI/Slack uses /api/daily-report.
 })();
 </script>
 </body>
