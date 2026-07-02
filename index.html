@@ -146,6 +146,7 @@
   function autoTable(payload){
     var rows = Array.isArray(payload) ? payload
       : (payload && Array.isArray(payload.projects)) ? payload.projects
+      : (payload && Array.isArray(payload.healthscores)) ? payload.healthscores
       : (payload && Array.isArray(payload.issues)) ? payload.issues
       : (payload && Array.isArray(payload.pages)) ? payload.pages
       : (payload && typeof payload==="object") ? [payload] : [];
@@ -164,9 +165,19 @@
 
   function findNum(obj, keys){
     if(!obj||typeof obj!=="object") return null;
-    for(var i=0;i<keys.length;i++){ if(obj[keys[i]]!=null) return obj[keys[i]]; }
-    // one level deep
-    for(var k in obj){ if(obj[k]&&typeof obj[k]==="object"){ for(var j=0;j<keys.length;j++){ if(obj[k][keys[j]]!=null) return obj[k][keys[j]]; } } }
+    function prim(v){ return typeof v==="number" || (typeof v==="string" && v!=="" && !isNaN(v)); }
+    for(var i=0;i<keys.length;i++){
+      var v = obj[keys[i]];
+      if(v!=null && prim(v)) return v;
+    }
+    // one level deep (Ahrefs often wraps values, e.g. { domain_rating: { domain_rating: 69 } })
+    for(var k in obj){
+      if(!obj[k] || typeof obj[k]!=="object") continue;
+      for(var j=0;j<keys.length;j++){
+        var nv = obj[k][keys[j]];
+        if(nv!=null && prim(nv)) return nv;
+      }
+    }
     return null;
   }
 
@@ -201,8 +212,8 @@
 
       // Subscription units (free endpoint) — guarded
       var sub = (r[2].status==="fulfilled" && r[2].value.ok) ? r[2].value.data : null;
-      var used = findNum(sub, ["units_used","used","rows_used"]);
-      var limit = findNum(sub, ["units_limit","limit","units_total","rows_limit"]);
+      var used = findNum(sub, ["units_usage_api_key","units_usage_workspace","units_used","used","rows_used"]);
+      var limit = findNum(sub, ["units_limit_workspace","units_limit_api_key","units_limit","limit","units_total","rows_limit"]);
       if(used!=null || limit!=null){
         $("ah-units").textContent = "Units: "+(used==null?"?":used)+(limit!=null?(" / "+limit):"")+" used this period";
       }
@@ -217,14 +228,17 @@
   }
 
   function renderProjects(payload){
-    var rows = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.projects)) ? payload.projects : [];
+    var rows = Array.isArray(payload) ? payload
+      : (payload && Array.isArray(payload.projects)) ? payload.projects
+      : (payload && Array.isArray(payload.healthscores)) ? payload.healthscores
+      : [];
     if(!rows.length){ $("ah-projects").innerHTML='<div class="na">No Site Audit projects returned. Either none are set up in Ahrefs, or the field names differ — open your browser Network tab on /api/ahrefs?path=/site-audit/projects and send me the response and I\'ll map the columns exactly.</div>'; return; }
     var cols=[]; rows.forEach(function(r){ Object.keys(r).forEach(function(k){ if(cols.indexOf(k)<0) cols.push(k); }); });
     cols = cols.slice(0,8);
     var head = cols.map(function(c){return '<th>'+esc(c)+'</th>';}).join("")+'<th></th>';
     var body = rows.map(function(r,i){
       var id = r.project_id || r.id || r.projectId;
-      var name = r.name || r.domain || r.url || ("Project "+(i+1));
+      var name = r.project_name || r.name || r.domain || r.target_url || r.url || ("Project "+(i+1));
       var tds = cols.map(function(c){ var v=r[c]; if(v&&typeof v==="object") v=JSON.stringify(v); return '<td>'+esc(v)+'</td>'; }).join("");
       return '<tr>'+tds+'<td>'+(id!=null?'<button class="linkbtn" data-pid="'+esc(id)+'" data-pname="'+esc(name)+'">View issues →</button>':'')+'</td></tr>';
     }).join("");
