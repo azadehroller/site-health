@@ -348,7 +348,7 @@
 
       $("se-summary-cards").innerHTML =
         '<div class="card"><div class="k">Unresolved issues</div><div class="v">'+issues.length+'</div><div class="sub">'+esc(REPORT_DATE)+'</div></div>'+
-        '<div class="card"><div class="k">High priority</div><div class="v">'+highPri+'</div><div class="sub">needs attention</div></div>'+
+        '<div class="card"><div class="k">High priority</div><div class="v">'+highPri+'</div><div class="sub">dev is looking into these</div></div>'+
         '<div class="card"><div class="k">Error events</div><div class="v">'+events+'</div><div class="sub">across unresolved issues</div></div>';
 
       var cwv = (r[1].status==="fulfilled" && r[1].value.ok && r[1].value.data) ? (dataRows(r[1].value.data)[0]||{}) : {};
@@ -439,8 +439,8 @@
 
       $("ck-summary-cards").innerHTML =
         '<div class="card"><div class="k">Total checks</div><div class="v">'+statuses.length+'</div><div class="sub">monitored</div></div>'+
-        '<div class="card"><div class="k">Passing</div><div class="v good">'+passing+'</div><div class="sub">healthy</div></div>'+
-        '<div class="card"><div class="k">Failing / errors</div><div class="v poor">'+failing+'</div><div class="sub">needs attention</div></div>'+
+        '<div class="card"><div class="k">Passing</div><div class="v">'+passing+'</div><div class="sub">checks passing</div></div>'+
+        '<div class="card"><div class="k">Failing / errors</div><div class="v">'+failing+'</div><div class="sub">checks failing</div></div>'+
         '<div class="card"><div class="k">Degraded</div><div class="v ni">'+degraded+'</div><div class="sub">slow or flaky</div></div>';
 
       $("ck-statuses").innerHTML = tableHtml([
