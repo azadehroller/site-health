@@ -81,7 +81,7 @@
   <!-- SENTRY -->
   <div class="tabpane" id="tab-sentry">
     <div class="panel">
-      https://site-health-alpha.vercel.app/api/daily-report?key=YOUR_SECRET&format=text      <h2>Sentry — daily report</h2>
+      <h2>Sentry — daily report</h2>
       <div class="row-actions" style="margin-top:0">
         <span class="muted" id="se-status" style="font-size:12px">Open this tab to load.</span>
         <button class="btn" id="se-reload" type="button">Reload report</button>
@@ -543,10 +543,10 @@
   }
 
   function ahrefsDomainRating(target, attempt){
-    attempt = attempt || 0;
-    if(attempt >= 7) return Promise.resolve({ ok:false, status:400, data:{ error:"No valid Ahrefs domain-rating date found" } });
+    attempt = attempt || 1;
+    if(attempt >= 15) return Promise.resolve({ ok:false, status:400, data:{ error:"Could not load domain rating" } });
     return ahrefs("/site-explorer/domain-rating", { target:target, date:ahrefsDateOffset(attempt) }).then(function(r){
-      if(!r.ok && r.data && r.data.error==="bad date") return ahrefsDomainRating(target, attempt+1);
+      if(!r.ok && r.data && (r.data.error==="bad date" || r.data.error==="missing argument 'date'")) return ahrefsDomainRating(target, attempt+1);
       return r;
     });
   }
