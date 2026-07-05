@@ -72,14 +72,14 @@
   <div class="tag" id="global-tag">roller.software · errors · uptime · SEO · AI/cron: <code>/api/daily-report</code></div>
 </header>
 <nav class="tabs">
-  <button data-tab="sentry">Sentry</button>
+  <button data-tab="sentry" class="active">Sentry</button>
   <button data-tab="checkly">Checkly</button>
-  <button data-tab="ahrefs" class="active">Ahrefs</button>
+  <button data-tab="ahrefs">Ahrefs</button>
 </nav>
 
 <main>
   <!-- SENTRY -->
-  <div class="tabpane" id="tab-sentry">
+  <div class="tabpane active" id="tab-sentry">
     <div class="panel">
       <h2>Sentry — daily report</h2>
       <div class="row-actions" style="margin-top:0">
@@ -155,7 +155,7 @@
   </div>
 
   <!-- AHREFS -->
-  <div class="tabpane active" id="tab-ahrefs">
+  <div class="tabpane" id="tab-ahrefs">
     <div class="warn"><b>Human dashboard only.</b> Scheduled AI/Slack reports should call <code>/api/daily-report</code> (server-side JSON/text) — not this page. Ahrefs charges units per request (min 50). Each tab loads when you open it; use Reload to refresh.</div>
 
     <div class="panel">
@@ -627,6 +627,7 @@
   }
 
   // Human dashboard only — tabs load when opened. Scheduled AI/Slack uses /api/daily-report.
+  loadSentry();
 })();
 </script>
 </body>
