@@ -20,11 +20,15 @@ module.exports = async (req, res) => {
 
   try {
     const upstream = await fetch(url.toString(), {
+      cache: "no-store",
       headers: { Authorization: "Bearer " + key, Accept: "application/json" }
     });
     const text = await upstream.text();
     res.status(upstream.status);
     res.setHeader("content-type", upstream.headers.get("content-type") || "application/json");
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    res.setHeader("CDN-Cache-Control", "no-store");
+    res.setHeader("Vercel-CDN-Cache-Control", "no-store");
     res.send(text);
   } catch (e) {
     res.status(502).json({ error: String((e && e.message) || e) });
