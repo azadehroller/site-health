@@ -41,6 +41,12 @@ module.exports = async (req, res) => {
     const format = String(req.query.format || "json").toLowerCase();
     const postSlack = req.query.slack === "1" || req.query.slack === "true";
 
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("CDN-Cache-Control", "no-store");
+    res.setHeader("Vercel-CDN-Cache-Control", "no-store");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+
     if (postSlack) {
       try {
         await postToSlack(report.text);
